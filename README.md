@@ -1,5 +1,6 @@
 # hybrid-music-recommendation-system
 📄 Description
+
 This project presents a hybrid architecture that combines Facial Emotion Recognition (FER) and Hand Gesture Control to deliver an emotionally adaptive, touch-free music experience. Unlike traditional recommendation systems that rely solely on listening history or user preferences, this system detects the user's real-time emotional state via a CNN-based facial analysis model and recommends music accordingly — while allowing seamless playback control through natural hand gestures tracked via MediaPipe's 21-landmark hand model.
 
 ✨ Key Features
