@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Emotion Mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#08070f; --panel:#100f1d; --panel2:#161526;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.11);
+    --violet:#b06dff; --pink:#ff6eb4; --gold:#ffd166;
+    --txt:#e4e0f0; --muted:#5a556c; --dim:#888;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+  body::before{
+    content:'';position:fixed;inset:0;
+    background:
+      radial-gradient(ellipse 80% 70% at 50% -20%,rgba(176,109,255,.13) 0%,transparent 55%),
+      radial-gradient(ellipse 60% 50% at 90% 90%,rgba(255,110,180,.10) 0%,transparent 50%);
+    pointer-events:none;z-index:0;
+  }
+
+  /* Floating particles */
+  .particles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .particle{
+    position:absolute;border-radius:50%;
+    background:radial-gradient(circle,rgba(176,109,255,.4),transparent);
+    animation:float linear infinite;
+  }
+  @keyframes float{
+    from{transform:translateY(100vh) scale(0);opacity:0}
+    10%{opacity:1}
+    90%{opacity:.3}
+    to{transform:translateY(-10vh) scale(1.5);opacity:0}
+  }
+
+  nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:1.5rem;
+    padding:1rem 2.5rem;
+    background:rgba(8,7,15,.82);border-bottom:1px solid var(--border);
+    backdrop-filter:blur(14px);
+  }
+  .logo{
+    font-family:'Bebas Neue';font-size:1.6rem;letter-spacing:.1em;
+    background:linear-gradient(135deg,var(--violet),var(--pink));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .nav-sep{flex:1}
+  .nav-back{color:var(--muted);text-decoration:none;font-size:.82rem;letter-spacing:.08em;transition:color .2s}
+  .nav-back:hover{color:var(--violet)}
+  .mode-badge{
+    padding:.3rem .9rem;border-radius:40px;
+    background:rgba(176,109,255,.12);border:1px solid rgba(176,109,255,.3);
+    color:var(--violet);font-size:.72rem;letter-spacing:.12em;
+  }
+
+  /* ── Layout ── */
+  .layout{
+    position:relative;z-index:1;
+    display:grid;grid-template-columns:1fr 380px;
+    gap:1.5rem;max-width:1280px;margin:0 auto;
+    padding:2rem 2rem 6rem;
+  }
+  @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+  /* ── Camera ── */
+  .cam-wrap{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:18px;overflow:hidden;position:relative;aspect-ratio:4/3;
+  }
+  .cam-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+
+  .cam-overlay{
+    position:absolute;top:0;left:0;right:0;padding:1rem 1.2rem;
+    display:flex;align-items:center;gap:.6rem;
+    background:linear-gradient(to bottom,rgba(8,7,15,.75),transparent);
+  }
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--pink);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .rec-label{font-size:.75rem;letter-spacing:.12em;color:rgba(255,255,255,.7)}
+
+  .emotion-hud{
+    position:absolute;bottom:0;left:0;right:0;
+    padding:1.5rem 1.8rem;
+    background:linear-gradient(to top,rgba(8,7,15,.95) 40%,transparent);
+  }
+  .emotion-label{
+    font-size:.7rem;letter-spacing:.15em;color:var(--muted);margin-bottom:.3rem;
+    text-transform:uppercase;
+  }
+  .emotion-value{
+    font-family:'Bebas Neue';font-size:3rem;letter-spacing:.06em;
+    background:linear-gradient(135deg,var(--violet),var(--pink));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    text-shadow:none;
+    transition:all .4s ease;
+  }
+  .emotion-bar{
+    height:3px;width:100%;margin-top:.8rem;
+    background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;
+  }
+  .emotion-fill{
+    height:100%;width:0%;border-radius:2px;
+    background:linear-gradient(90deg,var(--violet),var(--pink));
+    transition:width 1s ease;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar{display:flex;flex-direction:column;gap:1.2rem}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:14px;padding:1.5rem;
+  }
+  .panel-title{
+    font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:.1em;
+    color:var(--dim);margin-bottom:1.2rem;
+  }
+
+  /* ── Recommend Form ── */
+  .field{margin-bottom:1rem}
+  .field label{display:block;font-size:.72rem;letter-spacing:.1em;color:var(--muted);margin-bottom:.4rem}
+  .field input{
+    width:100%;padding:.75rem 1rem;
+    background:var(--panel2);border:1px solid var(--border2);border-radius:8px;
+    color:var(--txt);font-family:'DM Sans';font-size:.9rem;
+    outline:none;transition:border-color .2s,box-shadow .2s;
+  }
+  .field input:focus{
+    border-color:rgba(176,109,255,.5);
+    box-shadow:0 0 0 3px rgba(176,109,255,.1);
+  }
+  .field input::placeholder{color:var(--muted)}
+
+  .btn-recommend{
+    width:100%;padding:.9rem;border:none;border-radius:9px;cursor:pointer;
+    font-family:'Bebas Neue';font-size:1.15rem;letter-spacing:.1em;
+    background:linear-gradient(135deg,var(--violet),var(--pink));
+    color:#fff;
+    transition:transform .15s,box-shadow .2s,filter .2s;
+    box-shadow:0 4px 24px rgba(176,109,255,.3);
+    position:relative;overflow:hidden;
+  }
+  .btn-recommend::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+    opacity:0;transition:opacity .2s;
+  }
+  .btn-recommend:hover{transform:translateY(-1px);box-shadow:0 6px 32px rgba(176,109,255,.5);filter:brightness(1.08)}
+  .btn-recommend:hover::before{opacity:1}
+  .btn-recommend:active{transform:translateY(0)}
+  .btn-recommend:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+  .recommend-status{
+    margin-top:.8rem;padding:.7rem 1rem;border-radius:8px;
+    font-size:.82rem;text-align:center;display:none;
+  }
+  .recommend-status.success{background:rgba(0,245,196,.08);color:#00d4a0;border:1px solid rgba(0,245,196,.2)}
+  .recommend-status.warn{background:rgba(255,214,102,.08);color:var(--gold);border:1px solid rgba(255,214,102,.2)}
+
+  /* ── Emotion Grid ── */
+  .emotion-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+  .em-card{
+    padding:.9rem;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);text-align:center;
+    transition:border-color .3s,background .3s,transform .2s;
+  }
+  .em-card.glow{
+    border-color:rgba(176,109,255,.5);
+    background:rgba(176,109,255,.08);
+    transform:scale(1.03);
+    box-shadow:0 0 18px rgba(176,109,255,.2);
+  }
+  .em-emoji{font-size:1.8rem;display:block;margin-bottom:.3rem}
+  .em-label{font-size:.75rem;color:var(--muted);letter-spacing:.06em}
+
+  /* ── History ── */
+  .history-list{display:flex;flex-direction:column;gap:.5rem;max-height:160px;overflow-y:auto}
+  .hist-item{
+    display:flex;align-items:center;gap:.8rem;
+    padding:.6rem .8rem;border-radius:7px;
+    background:var(--panel2);font-size:.8rem;
+  }
+  .hist-emo{font-size:1.1rem}
+  .hist-info{flex:1;min-width:0}
+  .hist-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt)}
+  .hist-time{color:var(--muted);font-size:.7rem}
+  .history-list::-webkit-scrollbar{width:3px}
+  .history-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  footer{
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:.7rem 2.5rem;
+    background:rgba(8,7,15,.85);border-top:1px solid var(--border);
+    backdrop-filter:blur(10px);font-size:.73rem;color:var(--muted);
+  }
+  .foot-dot{width:6px;height:6px;border-radius:50%;background:var(--violet);animation:blink 1.4s infinite}
+</style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<div class="particles" id="particles"></div>
+
+<nav>
+  <div class="logo">Emotion detection</div>
+  <div class="nav-sep"></div>
+  <a class="nav-back" href="/">← Back</a>
+  <div class="mode-badge">EMOTION MODE</div>
+</nav>
+
+<div class="layout">
+  <!-- Camera -->
+  <div>
+    <div class="cam-wrap">
+      <img src="/video/emotion" alt="Emotion Feed" id="cam-img"/>
+      <div class="cam-overlay">
+        <div class="rec-dot"></div>
+        <span class="rec-label">LIVE · EMOTION ANALYSIS</span>
+      </div>
+      <div class="emotion-hud">
+        <div class="emotion-label">Detected Emotion</div>
+        <div class="emotion-value" id="emotion-display">Scanning…</div>
+        <div class="emotion-bar"><div class="emotion-fill" id="emotion-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Emotion states -->
+    <div class="panel">
+      <div class="panel-title">EMOTION STATES</div>
+      <div class="emotion-grid" id="emotion-grid">
+        <div class="em-card" data-emotion="happy"><span class="em-emoji">😊</span><span class="em-label">Happy</span></div>
+        <div class="em-card" data-emotion="sad"><span class="em-emoji">😢</span><span class="em-label">Sad</span></div>
+        <div class="em-card" data-emotion="angry"><span class="em-emoji">😤</span><span class="em-label">Angry</span></div>
+        <div class="em-card" data-emotion="surprised"><span class="em-emoji">😮</span><span class="em-label">Surprised</span></div>
+        <div class="em-card" data-emotion="neutral"><span class="em-emoji">😐</span><span class="em-label">Neutral</span></div>
+        <div class="em-card" data-emotion="fear"><span class="em-emoji">😨</span><span class="em-label">Fear</span></div>
+        <div class="em-card" data-emotion="disgust"><span class="em-emoji">🤢</span><span class="em-label">Disgust</span></div>
+        <div class="em-card" data-emotion="calm"><span class="em-emoji">😌</span><span class="em-label">Calm</span></div>
+      </div>
+    </div>
+
+    <!-- Recommend form -->
+    <div class="panel">
+      <div class="panel-title">MUSIC RECOMMENDATION</div>
+      <div class="field">
+        <label>LANGUAGE</label>
+        <input type="text" id="lang-input" placeholder="e.g. Tamil, Hindi, English…"/>
+      </div>
+      <div class="field">
+        <label>ARTIST / SINGER (optional)</label>
+        <input type="text" id="singer-input" placeholder="e.g. AR Rahman, Arijit…"/>
+      </div>
+      <button class="btn-recommend" id="recommend-btn" onclick="recommend()">
+        🎵 Find My Vibe on YouTube
+      </button>
+      <div class="recommend-status" id="rec-status"></div>
+    </div>
+
+    <!-- History -->
+    <div class="panel">
+      <div class="panel-title">RECOMMENDATION HISTORY</div>
+      <div class="history-list" id="history-list">
+        <div class="hist-item" style="color:var(--muted);font-size:.78rem">No recommendations yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div style="display:flex;align-items:center;gap:.5rem"><div class="foot-dot"></div>Emotion analysis active</div>
+  <span>Emotion Mode</span>
+  <a href="/gesture" style="color:var(--muted);text-decoration:none;font-size:.73rem">Switch to Gesture Mode →</a>
+</footer>
+
+<script>
+  // ── Particles ──
+  (function(){
+    const c = document.getElementById('particles');
+    for(let i=0;i<18;i++){
+      const p = document.createElement('div');
+      p.className='particle';
+      const sz = 4+Math.random()*12;
+      p.style.cssText=`
+        width:${sz}px;height:${sz}px;
+        left:${Math.random()*100}%;
+        animation-duration:${12+Math.random()*20}s;
+        animation-delay:${-Math.random()*20}s;
+        opacity:${.3+Math.random()*.4};
+      `;
+      c.appendChild(p);
+    }
+  })();
+
+  const EMOJIS={
+    happy:'😊',sad:'😢',angry:'😤',surprised:'😮',
+    neutral:'😐',fear:'😨',disgust:'🤢',calm:'😌',
+  };
+
+  let currentEmotion='';
+  let fillAnim=0;
+
+  async function poll(){
+    try{
+      const r=await fetch('/api/state');
+      const d=await r.json();
+      const emo=(d.emotion||'').toLowerCase();
+
+      document.getElementById('emotion-display').textContent = d.emotion || (d.model_ready?'Scanning…':'Model not loaded');
+
+      // Highlight grid
+      document.querySelectorAll('.em-card').forEach(el=>{
+        el.classList.toggle('glow', emo && el.dataset.emotion===emo);
+      });
+
+      // Animate fill bar
+      const targets={happy:90,sad:60,angry:80,surprised:70,neutral:50,fear:65,disgust:55,calm:40};
+      const pct = targets[emo]||30;
+      document.getElementById('emotion-fill').style.width = pct+'%';
+
+      currentEmotion=d.emotion||'';
+    }catch(e){}
+    setTimeout(poll,600);
+  }
+  poll();
+
+  function ts(){
+    const n=new Date();
+    return [n.getHours(),n.getMinutes()].map(v=>String(v).padStart(2,'0')).join(':');
+  }
+
+  async function recommend(){
+    const lang=document.getElementById('lang-input').value.trim();
+    const singer=document.getElementById('singer-input').value.trim();
+    const btn=document.getElementById('recommend-btn');
+    const status=document.getElementById('rec-status');
+
+    btn.disabled=true;
+
+    const r=await fetch('/api/recommend',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lang,singer}),
+    });
+    const d=await r.json();
+
+    if(d.ok){
+      status.className='recommend-status success';
+      status.style.display='block';
+      status.textContent=`✓ Opening YouTube for "${d.emotion}" vibes`;
+
+      // Add to history
+      const hist=document.getElementById('history-list');
+      if(hist.children[0]?.style.color){hist.innerHTML=''}
+      const item=document.createElement('div');
+      item.className='hist-item';
+      const emo=(d.emotion||'').toLowerCase();
+      item.innerHTML=`
+        <span class="hist-emo">${EMOJIS[emo]||'🎵'}</span>
+        <div class="hist-info">
+          <div class="hist-text">${lang} ${d.emotion} ${singer?'· '+singer:''}</div>
+          <div class="hist-time">${ts()}</div>
+        </div>`;
+      hist.prepend(item);
+    } else {
+      status.className='recommend-status warn';
+      status.style.display='block';
+      status.textContent='⚠ '+d.msg+' — please face the camera';
+    }
+
+    btn.disabled=false;
+    setTimeout(()=>{status.style.display='none'},4000);
+  }
+</script>
+</body>
+</html>

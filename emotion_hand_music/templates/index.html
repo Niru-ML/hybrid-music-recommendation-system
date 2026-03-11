@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title> AI Music Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:     #070810;
+    --panel:  #0d0f1c;
+    --border: rgba(255,255,255,.07);
+    --accent: #00f5c4;
+    --hot:    #ff3e6c;
+    --gold:   #ffd166;
+    --txt:    #e8eaf0;
+    --muted:  #6b7080;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  html, body {
+    height:100%;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise texture ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% -10%, rgba(0,245,196,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 110%, rgba(255,62,108,.10) 0%, transparent 55%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* ── Scanline ── */
+  body::after {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,.012) 2px,
+      rgba(255,255,255,.012) 4px
+    );
+    pointer-events:none; z-index:1;
+  }
+
+  nav {
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 1.4rem 3rem;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    background: rgba(7,8,16,.7);
+  }
+
+  .logo {
+    font-family:'Bebas Neue', sans-serif;
+    font-size:2rem; letter-spacing:.12em;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    -webkit-background-clip: text; -webkit-text-fill-color:transparent;
+  }
+
+  .nav-links { display:flex; gap:2rem; }
+  .nav-links a {
+    color: var(--muted); font-size:.85rem; text-decoration:none; letter-spacing:.08em;
+    transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── Hero ── */
+  .hero {
+    position:relative; z-index:2;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+    padding: 8rem 2rem 4rem;
+  }
+
+  .eyebrow {
+    display:inline-flex; align-items:center; gap:.6rem;
+    font-size:.72rem; letter-spacing:.2em; text-transform:uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(0,245,196,.25);
+    border-radius:40px; padding:.35rem 1rem;
+    margin-bottom:2.5rem;
+    animation: fadeUp .8s ease both;
+  }
+
+  .eyebrow span { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.4s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  h1 {
+    font-family:'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 12vw, 9rem);
+    line-height:.92;
+    letter-spacing:.04em;
+    margin-bottom:2rem;
+    animation: fadeUp .9s .1s ease both;
+  }
+
+  h1 .line-accent { color: var(--accent); }
+  h1 .line-hot    { color: var(--hot); }
+
+  .subtitle {
+    max-width:540px;
+    font-size:1.05rem; font-weight:300; line-height:1.7;
+    color: rgba(232,234,240,.65);
+    margin-bottom:3.5rem;
+    animation: fadeUp 1s .2s ease both;
+  }
+
+  .cta-row {
+    display:flex; gap:1.2rem; flex-wrap:wrap; justify-content:center;
+    animation: fadeUp 1s .3s ease both;
+  }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:.6rem;
+    padding:.85rem 2.2rem;
+    border-radius:6px;
+    font-size:.9rem; letter-spacing:.06em; text-decoration:none;
+    font-family:'DM Sans', sans-serif;
+    cursor:pointer; border:none;
+    transition: transform .15s, box-shadow .2s, filter .2s;
+  }
+  .btn:hover { transform:translateY(-2px); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #070810;
+    font-weight:500;
+    box-shadow: 0 0 28px rgba(0,245,196,.35);
+  }
+  .btn-primary:hover { box-shadow:0 0 44px rgba(0,245,196,.6); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--hot);
+    border: 1px solid var(--hot);
+    box-shadow: 0 0 18px rgba(255,62,108,.15);
+  }
+  .btn-secondary:hover { box-shadow:0 0 32px rgba(255,62,108,.4); background: rgba(255,62,108,.06); }
+
+  /* ── Mode Cards ── */
+  .cards {
+    position:relative; z-index:2;
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:1.5rem; max-width:900px; margin:0 auto;
+    padding: 0 2rem 6rem;
+    animation: fadeIn 1.2s .5s ease both;
+  }
+
+  @media(max-width:640px){ .cards{ grid-template-columns:1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius:16px;
+    padding: 2.5rem 2rem;
+    cursor:pointer;
+    text-decoration:none; color: inherit;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+    display:flex; flex-direction:column; gap:1.2rem;
+    position:relative; overflow:hidden;
+  }
+
+  .card::before {
+    content:'';
+    position:absolute; inset:0;
+    opacity:0; transition:opacity .3s;
+  }
+
+  .card.gesture::before { background: radial-gradient(ellipse at top left, rgba(0,245,196,.08), transparent 60%); }
+  .card.emotion::before { background: radial-gradient(ellipse at top left, rgba(255,62,108,.08), transparent 60%); }
+
+  .card:hover { transform:translateY(-4px); }
+  .card.gesture:hover { border-color:rgba(0,245,196,.4); box-shadow:0 12px 40px rgba(0,245,196,.12); }
+  .card.emotion:hover { border-color:rgba(255,62,108,.4); box-shadow:0 12px 40px rgba(255,62,108,.12); }
+  .card:hover::before { opacity:1; }
+
+  .card-icon {
+    font-size:2.5rem;
+    width:60px; height:60px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .gesture .card-icon { background:rgba(0,245,196,.12); }
+  .emotion .card-icon { background:rgba(255,62,108,.12); }
+
+  .card-title {
+    font-family:'Bebas Neue', sans-serif;
+    font-size:1.8rem; letter-spacing:.06em;
+  }
+  .gesture .card-title { color: var(--accent); }
+  .emotion .card-title { color: var(--hot); }
+
+  .card-desc { font-size:.88rem; color: var(--muted); line-height:1.6; }
+
+  .card-gestures {
+    display:flex; flex-wrap:wrap; gap:.4rem;
+    margin-top:.4rem;
+  }
+
+  .tag {
+    font-size:.7rem; padding:.2rem .7rem;
+    border-radius:40px; border:1px solid var(--border);
+    color: var(--muted); letter-spacing:.05em;
+  }
+
+  .card-arrow {
+    margin-top:auto; align-self:flex-end;
+    font-size:1.3rem; opacity:.4;
+    transition: opacity .2s, transform .2s;
+  }
+  .card:hover .card-arrow { opacity:1; transform:translate(3px,-3px); }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    position:fixed; bottom:0; left:0; right:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.75rem 3rem;
+    background:rgba(7,8,16,.85);
+    border-top:1px solid var(--border);
+    backdrop-filter:blur(10px);
+    font-size:.75rem; color: var(--muted);
+  }
+
+  .status-dot {
+    width:7px; height:7px; border-radius:50%;
+    background: var(--accent);
+    display:inline-block; margin-right:.5rem;
+    animation:pulse 1.4s infinite;
+  }
+
+  #status-gesture, #status-emotion { color: var(--txt); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">MUSIC</div>
+  <div class="nav-links">
+    <a href="/gesture">Gesture Mode</a>
+    <a href="/emotion">Emotion Mode</a>
+    <a href="https://github.com/Niru-ML" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="eyebrow"><span></span>AI-Powered Music Control</div>
+  <h1>
+    A Hybrid Architecture for <br>
+    <span class="line-accent">Music Recommendation and Control</span><br>
+    <span class="line-hot">Integrating Facial Emotion Recognition and Hand Gesture Interaction</span>
+  </h1>
+  <p class="subtitle">
+    Wave your hand to control playback, or let your emotions decide the vibe.
+    Real-time computer vision meets music in one seamless experience.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/gesture">✋ Gesture Control</a>
+    <a class="btn btn-secondary" href="/emotion">😊 Emotion Mode</a>
+  </div>
+</section>
+
+<div class="cards">
+  <a class="card gesture" href="/gesture">
+    <div class="card-icon">✋</div>
+    <div class="card-title">Gesture Control</div>
+    <p class="card-desc">Control media playback with precise hand gestures detected in real-time via your webcam.</p>
+    <div class="card-gestures">
+      <span class="tag">⏯ Play/Pause</span>
+      <span class="tag">⏩ Forward</span>
+      <span class="tag">⏪ Rewind</span>
+      <span class="tag">🔊 Volume</span>
+      <span class="tag">⏭ Next</span>
+      <span class="tag">⏮ Prev</span>
+      <span class="tag">🔇 Mute</span>
+    </div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a class="card emotion" href="/emotion">
+    <div class="card-icon">🎭</div>
+    <div class="card-title">Emotion Recommend</div>
+    <p class="card-desc">Your face reveals your mood — and we'll find the perfect YouTube playlist to match it.</p>
+    <div class="card-gestures">
+      <span class="tag">😊 Happy</span>
+      <span class="tag">😢 Sad</span>
+      <span class="tag">😤 Angry</span>
+      <span class="tag">😮 Surprised</span>
+      <span class="tag">😐 Neutral</span>
+    </div>
+    <div class="card-arrow">↗</div>
+  </a>
+</div>
+
+<div class="status-bar">
+  <span><span class="status-dot"></span>Camera active · SynthSense running</span>
+  <span>Gesture: <span id="status-gesture">—</span></span>
+  <span>Emotion: <span id="status-emotion">—</span></span>
+</div>
+
+<script>
+  async function poll() {
+    try {
+      const r = await fetch('/api/state');
+      const d = await r.json();
+      document.getElementById('status-gesture').textContent = d.gesture || '—';
+      document.getElementById('status-emotion').textContent = d.emotion || '—';
+    } catch(e){}
+    setTimeout(poll, 1500);
+  }
+  poll();
+</script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SynthSense · Gesture Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#060710; --panel:#0b0d1a; --panel2:#10121f;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.12);
+    --accent:#00f5c4; --hot:#ff3e6c; --blue:#4d8fff;
+    --txt:#dde1ee; --muted:#555a6e; --dim:#888da0;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+  body::before{
+    content:'';position:fixed;inset:0;
+    background:
+      radial-gradient(ellipse 70% 50% at -5% 50%,rgba(0,245,196,.10) 0%,transparent 55%),
+      radial-gradient(ellipse 50% 60% at 105% 50%,rgba(77,143,255,.08) 0%,transparent 55%);
+    pointer-events:none;z-index:0;
+  }
+
+  nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:1.5rem;
+    padding:1rem 2.5rem;
+    background:rgba(6,7,16,.82);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(14px);
+  }
+  .logo{font-family:'Bebas Neue';font-size:1.6rem;letter-spacing:.1em;
+    background:linear-gradient(135deg,var(--accent),#00d4ff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .nav-sep{flex:1}
+  .nav-back{color:var(--muted);text-decoration:none;font-size:.82rem;letter-spacing:.08em;
+    transition:color .2s}
+  .nav-back:hover{color:var(--accent)}
+  .mode-badge{
+    padding:.3rem .9rem;border-radius:40px;
+    background:rgba(0,245,196,.1);border:1px solid rgba(0,245,196,.25);
+    color:var(--accent);font-size:.72rem;letter-spacing:.12em;
+  }
+
+  /* ── Main Layout ── */
+  .layout{
+    position:relative;z-index:1;
+    display:grid;grid-template-columns:1fr 360px;
+    gap:1.5rem;
+    max-width:1280px;margin:0 auto;
+    padding:2rem 2rem 6rem;
+  }
+  @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+  /* ── Camera Panel ── */
+  .cam-wrap{
+    background:var(--panel);
+    border:1px solid var(--border);border-radius:18px;
+    overflow:hidden;position:relative;
+    aspect-ratio:4/3;
+  }
+  .cam-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+  .cam-overlay{
+    position:absolute;top:0;left:0;right:0;
+    padding:1rem 1.2rem;
+    display:flex;align-items:center;gap:.6rem;
+    background:linear-gradient(to bottom,rgba(6,7,16,.75),transparent);
+  }
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--hot);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .rec-label{font-size:.75rem;letter-spacing:.12em;color:rgba(255,255,255,.7)}
+
+  .gesture-hud{
+    position:absolute;bottom:0;left:0;right:0;
+    padding:1.2rem 1.5rem;
+    background:linear-gradient(to top,rgba(6,7,16,.9),transparent);
+    display:flex;align-items:flex-end;justify-content:space-between;
+  }
+
+  .gesture-name{
+    font-family:'Bebas Neue';font-size:2.2rem;letter-spacing:.06em;
+    color:var(--accent);
+    text-shadow:0 0 20px rgba(0,245,196,.5);
+  }
+  .action-flash{
+    font-family:'DM Mono';font-size:.8rem;color:var(--blue);
+    border:1px solid rgba(77,143,255,.3);border-radius:6px;
+    padding:.3rem .8rem;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar{display:flex;flex-direction:column;gap:1.2rem}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:14px;padding:1.5rem;
+  }
+
+  .panel-title{
+    font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:.1em;
+    color:var(--dim);margin-bottom:1.2rem;
+  }
+
+  /* ── Gesture Reference ── */
+  .gesture-list{display:flex;flex-direction:column;gap:.7rem}
+
+  .gesture-item{
+    display:flex;align-items:center;gap:1rem;
+    padding:.75rem 1rem;
+    border-radius:9px;
+    border:1px solid var(--border);
+    background:var(--panel2);
+    transition:border-color .2s,background .2s;
+    cursor:default;
+  }
+  .gesture-item.active{
+    border-color:rgba(0,245,196,.4);
+    background:rgba(0,245,196,.05);
+  }
+  .g-icon{font-size:1.4rem;width:36px;text-align:center}
+  .g-info{flex:1;min-width:0}
+  .g-name{font-size:.88rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .g-desc{font-size:.72rem;color:var(--muted);margin-top:.2rem}
+  .g-key{
+    font-family:'DM Mono';font-size:.68rem;
+    padding:.15rem .5rem;border-radius:5px;
+    background:rgba(255,255,255,.06);color:var(--dim);
+    border:1px solid var(--border2);white-space:nowrap;
+  }
+
+  /* ── Action Log ── */
+  .log-list{display:flex;flex-direction:column;gap:.5rem;max-height:200px;overflow-y:auto}
+  .log-item{
+    display:flex;gap:.8rem;align-items:baseline;
+    font-size:.78rem;
+  }
+  .log-time{font-family:'DM Mono';color:var(--muted);font-size:.7rem;min-width:52px}
+  .log-action{color:var(--txt)}
+  .log-list::-webkit-scrollbar{width:3px}
+  .log-list::-webkit-scrollbar-track{background:transparent}
+  .log-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  /* ── Play State ── */
+  .play-state{
+    display:flex;align-items:center;justify-content:center;gap:1rem;
+    padding:1.2rem;
+    border-radius:9px;
+    background:var(--panel2);border:1px solid var(--border);
+    font-family:'Bebas Neue';font-size:1.4rem;letter-spacing:.1em;
+    transition:color .3s;
+  }
+  .play-state.playing{color:var(--accent)}
+  .play-state.paused{color:var(--muted)}
+
+  /* ── Bottom status ── */
+  footer{
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:.7rem 2.5rem;
+    background:rgba(6,7,16,.85);border-top:1px solid var(--border);
+    backdrop-filter:blur(10px);font-size:.73rem;color:var(--muted);
+  }
+  .foot-status{display:flex;align-items:center;gap:.5rem}
+  .cam-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.4s infinite}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Gesture control</div>
+  <div class="nav-sep"></div>
+  <a class="nav-back" href="/">← Back</a>
+  <div class="mode-badge">GESTURE MODE</div>
+</nav>
+
+<div class="layout">
+  <!-- Camera -->
+  <div>
+    <div class="cam-wrap">
+      <img src="/video/gesture" alt="Camera Feed" id="cam-img"/>
+      <div class="cam-overlay">
+        <div class="rec-dot"></div>
+        <span class="rec-label">LIVE · GESTURE TRACKING</span>
+      </div>
+      <div class="gesture-hud">
+        <div class="gesture-name" id="gesture-display">Detecting…</div>
+        <div class="action-flash" id="action-display">READY</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Play State -->
+    <div class="panel">
+      <div class="panel-title">PLAYER STATE</div>
+      <div class="play-state paused" id="play-state-div">
+        <span id="play-icon">⏸</span>
+        <span id="play-label">PAUSED</span>
+      </div>
+    </div>
+
+    <!-- Gesture Reference -->
+    <div class="panel">
+      <div class="panel-title">GESTURE MAP</div>
+      <div class="gesture-list" id="gesture-list">
+        <div class="gesture-item" data-key="Play / Pause, Mute">
+          <div class="g-icon">✋</div>
+          <div class="g-info">
+            <div class="g-name">Open Hand</div>
+            <div class="g-desc">Play / Pause</div>
+          </div>
+          <span class="g-key">SPACE</span>
+        </div>
+        <div class="gesture-item" data-key="Mute">
+          <div class="g-icon">✊</div>
+          <div class="g-info">
+            <div class="g-name">Closed Fist</div>
+            <div class="g-desc">Mute</div>
+          </div>
+          <span class="g-key">M</span>
+        </div>
+        <div class="gesture-item" data-key="Forward">
+          <div class="g-icon">👉</div>
+          <div class="g-info">
+            <div class="g-name">Index → Right</div>
+            <div class="g-desc">Forward 5s</div>
+          </div>
+          <span class="g-key">→</span>
+        </div>
+        <div class="gesture-item" data-key="Rewind">
+          <div class="g-icon">👈</div>
+          <div class="g-info">
+            <div class="g-name">Index → Left</div>
+            <div class="g-desc">Rewind 5s</div>
+          </div>
+          <span class="g-key">←</span>
+        </div>
+        <div class="gesture-item" data-key="Volume Up">
+          <div class="g-icon">✌️</div>
+          <div class="g-info">
+            <div class="g-name">Two Fingers High</div>
+            <div class="g-desc">Volume Up</div>
+          </div>
+          <span class="g-key">↑</span>
+        </div>
+        <div class="gesture-item" data-key="Volume Down">
+          <div class="g-icon">🤞</div>
+          <div class="g-info">
+            <div class="g-name">Two Fingers Low</div>
+            <div class="g-desc">Volume Down</div>
+          </div>
+          <span class="g-key">↓</span>
+        </div>
+        <div class="gesture-item" data-key="Next Track">
+          <div class="g-icon">👍</div>
+          <div class="g-info">
+            <div class="g-name">Thumb Only</div>
+            <div class="g-desc">Next Track</div>
+          </div>
+          <span class="g-key">CTRL→</span>
+        </div>
+        <div class="gesture-item" data-key="Prev Track">
+          <div class="g-icon">🤟</div>
+          <div class="g-info">
+            <div class="g-name">Three Fingers</div>
+            <div class="g-desc">Prev Track</div>
+          </div>
+          <span class="g-key">CTRL←</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Log -->
+    <div class="panel">
+      <div class="panel-title">ACTION LOG</div>
+      <div class="log-list" id="log-list">
+        <div class="log-item"><span class="log-time">--:--:--</span><span class="log-action">Ready</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="foot-status"><div class="cam-dot"></div>Camera streaming</div>
+  <span>Gesture Control</span>
+  <a href="/emotion" style="color:var(--muted);text-decoration:none;font-size:.73rem">Switch to Emotion Mode →</a>
+</footer>
+
+<script>
+  let lastAction = '';
+  let lastGesture = '';
+
+  function ts(){
+    const n=new Date();
+    return [n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+  }
+
+  function addLog(action){
+    const list = document.getElementById('log-list');
+    const item = document.createElement('div');
+    item.className='log-item';
+    item.innerHTML=`<span class="log-time">${ts()}</span><span class="log-action">${action}</span>`;
+    list.prepend(item);
+    while(list.children.length > 20) list.removeChild(list.lastChild);
+  }
+
+  function highlightGesture(gesture){
+    document.querySelectorAll('.gesture-item').forEach(el=>{
+      const keys = el.dataset.key || '';
+      el.classList.toggle('active', keys.split(',').some(k=>gesture.includes(k.trim())));
+    });
+  }
+
+  async function poll(){
+    try{
+      const r = await fetch('/api/state');
+      const d = await r.json();
+
+      // Gesture display
+      const g = d.gesture || 'No gesture';
+      document.getElementById('gesture-display').textContent = g;
+      if(g !== lastGesture){ highlightGesture(g); lastGesture=g; }
+
+      // Action log
+      if(d.last_action && d.last_action !== lastAction){
+        document.getElementById('action-display').textContent = d.last_action.toUpperCase();
+        addLog(d.last_action);
+        lastAction = d.last_action;
+      }
+
+      // Play state
+      const ps = d.play_state || 'paused';
+      const div = document.getElementById('play-state-div');
+      div.className = 'play-state ' + ps;
+      document.getElementById('play-icon').textContent = ps==='playing'?'▶':'⏸';
+      document.getElementById('play-label').textContent = ps.toUpperCase();
+
+    }catch(e){}
+    setTimeout(poll,400);
+  }
+  poll();
+</script>
+</body>
+</html>
